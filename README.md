@@ -281,3 +281,55 @@ Next.js App Router에서 fetch는 기본적으로 데이터를 캐싱하여 성�
     - 캐시 제어
         - **revalidatePath 또는 revalidateTag**: 서버에서 캐시를 갱신하면 클라이언트 캐시도 업데이트 가능.
         - **새로고침**: 캐시를 무효화하고 서버에서 새 데이터를 가져옴.
+
+### 스트리밍
+
+1. 페이지 스트리밍
+    
+    서버에서 클라이언트로 HTML을 점진적으로 전송하는 기능입니다. 특히 비동기 데이터 fetching이 완료되기 전에 기본 UI를 먼저 렌더링 할 수 있습니다.
+    
+    - 스트리밍 설정 방법
+        - page.tsx와 같은 경로에 loading.tsx 추가
+        - loading.tsx: 비동기 작업이 완료될 때까지 표시될 로딩 상태 정의
+        - page.tsx가 async 함수로 되어있어야 스트리밍 동작
+    - 예제
+        
+        ```tsx
+        // app/dashboard/page.tsx
+        export default async function DashboardPage() {
+          const data = await fetch("https://api.example.com/data").then(res => res.json());
+          return <div>{data.message}</div>;
+        }
+        
+        // app/dashboard/loading.tsx
+        export default function Loading() {
+          return <div>로딩 중...</div>;
+        }
+        ```
+        
+        - /dashboard 경로에 접근하면 데이터가 로드되기 전 "로딩 중..."이 먼저 표시
+        - 데이터가 준비되면 페이지 콘텐츠로 대체
+    - 주의사항
+        - 컴퍼넌트 별 세밀한 스트리밍 불가: 페이지 단위로만 적용 → 개별 컴퍼넌트에 세밀한 로딩 상태를 제어하려면 Suspense 사용 필요
+        - 하위 페이지에도 자동으로 적용: 상위 경로에 loading.tsx가 있으면 하위 경로에도 자동 적용
+        - async가 붙은 페이지만 적용
+        - 쿼리 스트링 변경 시 미적용: URL의 쿼리 스트링만 변경되는 경우 스트리밍이 트리거 되지 않음
+    
+2. 컴퍼넌트 스트리밍
+    
+    React의 Suspense를 활용해 개별 컴포넌트의 비동기 로딩을 관리하는 방법입니다. 페이지 전체가 아닌 특정 컴포넌트의 데이터 fetching을 기다리는 동안 대체 Skeleton과 같은 대체 UI를 표시할 수 있습니다.
+    
+    - 설정 방법
+        - Suspense 컴포넌트로 로딩을 적용하고 싶은 컴포넌트 깜싸기
+        - fallback 속서에 로딩 중 표시될 UI(보통 Skeleton) 정의
+3. 에러 핸들링
+    
+    페이지나 컴포넌트에서 발생한 예외를 잡아 사용자에게 적절한 에러 UI 표시
+    
+    - 설정 방법
+        - error.tsx 파일을 페이지와 동일한 경로에 추가
+    - 주의 사항
+        - error.tsx는 클라이언트 컴포넌트여야함 → “use client” 지시어 추가 필요
+        - 하위 페이지에도 자동 적용:  위 경로의 error.tsx가 하위 경로에도 적용 → 하위 경로에 별도의 error.tsx를 추가하면 커스텀 핸들링 가능
+        - 레이아웃 범위 제한: 에러 핸들링은 같은 경로에 있는 layout.tsx 까지만 영향
+        - 현재 자기와 같은 경로에 있는 layout 까지만 error 핸들링함
