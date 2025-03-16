@@ -1,6 +1,9 @@
 import NotFound from "@/app/not-found";
 import style from "./page.module.css";
 import Image from "next/image"  
+import { ReviewData } from "@/types";
+import ReviewItem from "@/components/review-item";
+import ReviewEditor from "@/components/review-editor";
 
 // 동적 파라미터를 사용하지 않는다.
 // export const dynamicParams = false;
@@ -15,15 +18,8 @@ export function generateStaticParams(){
   ]
 }
 
-// 도서 상세 페이지 (Dynamic Page) 
-export default async function Page({ 
-  params, 
-}: { 
-  params: Promise<{ id: string | string[] }> 
-}) {
-  
-  const { id } = await params;
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER_URL}/book/${id}`)
+async function BookDetail({bookId}: {bookId: string}){
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER_URL}/book/${bookId}`)
 
   if(!response.ok){
     if(response.status === 404){
@@ -45,7 +41,7 @@ export default async function Page({
   } = book
   
   return (
-    <div className={style.container}>
+    <section>
       <div
         className={style.cover_img_container}
         style={{ backgroundImage: `url('${coverImgUrl}')` }}
@@ -58,6 +54,39 @@ export default async function Page({
         {author} | {publisher}
       </div>
       <div className={style.description}>{description}</div>
-    </div>
+    </section>
   );
+}
+
+async function ReviewList({ bookId }: { bookId: string }){
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER_URL}/review/book/${bookId}`)
+  
+  if(!response.ok){
+    throw new Error(`Review fetch failed :  ${response.statusText}`);
+  }
+
+  const reviews: ReviewData[] = await response.json();
+
+  return <section>
+    {reviews.map((review) => (
+      <ReviewItem  key={`review-item-id=${review.id}`} {...review}/>
+    ))}
+  </section>
+}
+
+// 도서 상세 페이지 (Dynamic Page) 
+export default async function Page({ 
+  params, 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  
+  const { id } = await params;
+
+  return <div className={style.container}>
+    <BookDetail bookId={id} />
+    <ReviewEditor bookId={id}/>
+    <ReviewList bookId={id} />
+  </div>
+ 
 }
