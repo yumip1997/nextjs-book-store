@@ -333,3 +333,95 @@ Next.js App Router에서 fetch는 기본적으로 데이터를 캐싱하여 성�
         - 하위 페이지에도 자동 적용:  위 경로의 error.tsx가 하위 경로에도 적용 → 하위 경로에 별도의 error.tsx를 추가하면 커스텀 핸들링 가능
         - 레이아웃 범위 제한: 에러 핸들링은 같은 경로에 있는 layout.tsx 까지만 영향
         - 현재 자기와 같은 경로에 있는 layout 까지만 error 핸들링함
+
+### 서버 액션
+
+1. 서버액션
+    
+    클라이언트에서 서버 측 로직을 직접 호출할 수 있도록 해주는 매커니즘입니다. 별도의 API end-point를 만들지 않고도 서버에서 실행되는 함수를 정의하고 호출할 수 있습니다. 주로 formData 제출, 인증 처리 등에 활용됩니다. 
+    
+    - 설정 방법
+        - 파일 또는 함수에 `use server` 추가
+    - 예제
+        
+        ```tsx
+        'use server'
+        
+        export async function createReviewAction(formData: FormData){
+        
+            const bookId = formData.get("bookId")?.toString();
+            const content = formData.get("content")?.toString();
+            const author = formData.get("author")?.toString();
+        
+            if(!content || !author){
+              return;
+            }
+        
+            try{
+              await fetch(`${process.env.NEXT_PUBLIC_API_SERVER_URL}/review`, {
+                method: "POST",
+                body: JSON.stringify({bookId, content, author})
+              });
+        
+              // review-[bookId]를 태그 값으로 갖는 모든 fetch 재검증
+              revalidateTag(`review-${bookId}`);
+            }catch(error){
+              console.log(error);
+            }
+        
+          }
+        ```
+        
+        ```tsx
+        export default function ReviewEditor({ bookId }: { bookId: string }) {
+          return (
+            <section>
+              <form
+                className={style.form_container}
+                action={createReviewAction}
+              >
+                <input name="bookId" value={bookId} hidden readOnly/>
+                <textarea required name="content" placeholder="리뷰 내용" />
+                <div className={style.submit_container}>
+                  <input required name="author" placeholder="작성자" />
+                  <button type="submit">작성하기</button>
+                </div>
+              </form>
+            </section>
+          );
+        }
+        ```
+        
+
+2. 재검증
+
+캐시된 데이터를 갱신하는 매커니즘으로 `revalidatePath` 또는 `revalidateTag`로 이루어집니다.
+
+- revalidatePath 기반 유형
+    
+    revalidatePath는 주로 풀라우트 캐시(Full Route Cache)에 영향을 주며, 경로 단위로 캐시를 무효화합니다.
+    
+    - **특정 주소의 페이지만 재검증**
+        - `revalidatePath('/blog/post-1')` : /blog/post-1 경로의 풀라우트 캐시가 무효화 →  다음 요청 시 새로 생성
+    - **특정 경로의 모든 동적 페이지를 재검증**
+        - `revalidatePath('/blog/[slug]', 'page')`
+    - **특정 레이아웃을 갖는 모든 페이지 재검증**
+        - `revalidatePath('/', 'layout')`
+    - 전체 페이지 대상 재검증
+        - `revalidatePath('/', 'page')` : 모든 경로의 풀라우트 캐시가 무효화
+- revalidateTag 기반 유형
+    
+    revalidateTag는 데이터 캐시(Data Cache)에 영향을 주며, 태그 단위로 캐시를 무효화합니다. 풀라우트 캐시에는 영향을 주지 않기에 페이지 자체는 갱신되지 않을 수 있습니다.
+    
+    ```tsx
+    // 데이터 페칭 시 태그 지정
+    await fetch('https://api.example.com/data', {
+      cache: 'force-cache',
+      next: { tags: ['posts'] },
+    });
+    
+    // 태그로 재검증
+    revalidateTag('posts');
+    ```
+    
+    - posts 태그가 붙은 데이터 캐시가 무효화되고, 다음 요청 시 새 데이터로 갱신

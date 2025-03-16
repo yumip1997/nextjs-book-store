@@ -1,3 +1,4 @@
+import { createReviewAction } from "@/actions/create-review-action";
 import style from "@/components/review-editor.module.css"
 
 export default function ReviewEditor({ bookId }: { bookId: string }) {
@@ -5,6 +6,7 @@ export default function ReviewEditor({ bookId }: { bookId: string }) {
     <section>
       <form
         className={style.form_container}
+        action={createReviewAction}
       >
         <input name="bookId" value={bookId} hidden readOnly/>
         <textarea required name="content" placeholder="리뷰 내용" />
