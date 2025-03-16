@@ -5,6 +5,7 @@ export default function ReviewItem({
   content,
   author,
   createdAt,
+    bookId,
 }: ReviewData) {
   return (
     <div className={style.container}>
