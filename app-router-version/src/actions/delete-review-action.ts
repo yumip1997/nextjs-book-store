@@ -19,7 +19,10 @@ export async function deleteReviewAction(_: any, formData: FormData) {
         })
 
         if(!response.ok){
-            throw new Error(response.statusText);
+            return {
+                status: false,
+                message: `리뷰 삭제에 실패했습니다: ${response.statusText}`
+            };
         }
 
         revalidateTag(`review-${bookId}`);
